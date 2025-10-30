@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from 'axios';
+import { toast } from "react-toastify";
 
 // Types (unchanged)
 interface StaticData {
@@ -100,15 +101,19 @@ export const useCreateMeal = () => {
     setLoading(true);
     setError(null);
     setSuccess(false);
-
     try {
       const response = await api.post('/meals/', mealData);
       setSuccess(true);
+      if(response){
+        toast.success(response?.data?.message||'meal added successfully')
+      }
       return { success: true, data: response.data };
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || err.message || "Failed to create meal";
       setError(errorMessage);
       console.error("Create meal error:", err);
+              toast.error(errorMessage)
+
       return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
