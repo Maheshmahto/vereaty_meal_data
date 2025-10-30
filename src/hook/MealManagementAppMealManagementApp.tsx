@@ -1,6 +1,9 @@
-import { useState, useEffect } from "react";
 
-// Types
+
+import { useState, useEffect } from "react";
+import axios from 'axios';
+
+// Types (unchanged)
 interface StaticData {
   cuisines: Array<{ id: number; name: string }>;
   dietary_preferences: Array<{ id: number; name: string }>;
@@ -42,12 +45,19 @@ interface MealFormData {
   images: Image[];
 }
 
-// Base API URL - can be configured
+// Base API URL
 const API_BASE_URL = "http://192.168.29.82:8000/api";
 
-/**
- * Custom hook to fetch static data (cuisines, dietary preferences, health goals)
- */
+// Create axios instance with common config
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+});
+
+/* Custom hook to fetch static data */
 export const useStaticData = () => {
   const [data, setData] = useState<StaticData>({
     cuisines: [],
@@ -62,21 +72,10 @@ export const useStaticData = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/static/all/`, {
-        headers: {
-          accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setData(result);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to load options";
+      const response = await api.get('/static/all/');
+      setData(response.data);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || "Failed to load options";
       setError(errorMessage);
       console.error("Static data fetch error:", err);
     } finally {
@@ -91,41 +90,23 @@ export const useStaticData = () => {
   return { data, loading, error, refetch: fetchStaticData };
 };
 
-/**
- * Custom hook to create a new meal
- */
+/* Custom hook to create meals (single or multiple) */
 export const useCreateMeal = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const createMeal = async (mealData: MealFormData) => {
+  const createMeal = async (mealData: MealFormData[]) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/meals/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          accept: "application/json",
-        },
-        body: JSON.stringify(mealData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.detail || `HTTP error! status: ${response.status}`
-        );
-      }
-
-      const result = await response.json();
+      const response = await api.post('/meals/', mealData);
       setSuccess(true);
-      return { success: true, data: result };
+      return { success: true, data: response.data };
     } catch (err: any) {
-      const errorMessage = err.message || "Failed to create meal";
+      const errorMessage = err.response?.data?.detail || err.message || "Failed to create meal";
       setError(errorMessage);
       console.error("Create meal error:", err);
       return { success: false, error: errorMessage };
